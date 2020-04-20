@@ -8,12 +8,17 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.playingsound.databinding.ActivityMainBinding
+import com.example.playingsound.model.MyAdapter
+import com.example.playingsound.model.MyViewModel
 
 const val PLAYING = "playing"
 const val STOPPED = "stopped"
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var myViewModel : MyViewModel
 
     private lateinit var mainBinding : ActivityMainBinding
     private var mediaPlayer : MediaPlayer? = null
@@ -27,18 +32,32 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        myViewModel = MyViewModel(application)
+
         mainBinding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
+        mainBinding.recyclerView.apply {
+            adapter = MyAdapter(myViewModel.listFile)
+            layoutManager = LinearLayoutManager(applicationContext)
+        }
+
         buttonConfiguration()
-        //withSoundPool()
 
         soundStatus.observe(this, Observer {
-            if (it == STOPPED && soundId < trackList.size) {
-                playSound(trackList[soundId])
+            when (it) {
+                PLAYING -> {
+                    mainBinding.group1IsEnabled = true
+                    mainBinding.playButton.isEnabled = false
+                    //mainBinding.stopButton.isEnabled = true
+                }
+
+                STOPPED -> {
+                    mainBinding.group1IsEnabled = false
+                    mainBinding.playButton.isEnabled = true
+                    //mainBinding.stopButton.isEnabled = false
+                }
             }
         })
-
-        setContentView(mainBinding.root)
     }
 
     private fun buttonConfiguration() {
@@ -60,12 +79,18 @@ class MainActivity : AppCompatActivity() {
         mediaPlayer?.setOnCompletionListener {
             Toast.makeText(applicationContext, "Stop playing", Toast.LENGTH_LONG).show()
             soundId ++
-            soundStatus.value = STOPPED
+
+            if (soundId < trackList.size) {
+                playSound(trackList[soundId])
+            }
+            else {
+                soundStatus.value = STOPPED
+            }
+
         }
 
-        soundStatus.value = PLAYING
-
         mediaPlayer?.start()
+        soundStatus.value = PLAYING
     }
 
     private fun withSoundPool() {
